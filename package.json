@@ -1,6 +1,6 @@
 {
   "name": "agen-file-reader",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "asynchronous file reader using generator",
   "main": "lib/reader.ts",
   "scripts": {
