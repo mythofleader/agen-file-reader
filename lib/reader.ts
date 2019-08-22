@@ -1,4 +1,4 @@
-import { promises as fsPromises } from 'fs';
+import { open as openFile, close as closeFile, read as readFile } from 'fs';
 
 interface AGenFileReaderConstructor {
     readonly filePath: string;
@@ -23,7 +23,7 @@ class Chunk {
     }
 
     flush(): string {
-        return this.tempStorage.join(' ');
+        return this.tempStorage.join('');
     }
 }
 
@@ -34,7 +34,7 @@ export default class AGenFileReader {
     private readonly readConfig: ReadConfig;
     private readonly EMPTY_CHAR: string = '';
     private chunk?: Chunk;
-    private fileHandle?: fsPromises.FileHandle;
+    private fd: number | undefined;
 
     constructor(params: AGenFileReaderConstructor) {
         this.filePath = params.filePath;
@@ -46,21 +46,42 @@ export default class AGenFileReader {
         };
     }
 
-    private async openFile() {
-        this.fileHandle = await fsPromises.open(this.filePath, 'r');
+    private openFile(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            openFile(this.filePath, 'r', (err: NodeJS.ErrnoException | null, fd: number) => {
+                if (err) return reject(err);
+
+                this.fd = fd;
+                return resolve();
+            });
+        });
     }
 
-    private async closeFile() {
-        if (this.fileHandle) await this.fileHandle.close();
+    private closeFile(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            closeFile(this.fd!, (err: NodeJS.ErrnoException | null) => {
+                if (err) return reject(err);
+
+                return resolve();
+            });
+        });
     }
 
-    private async readChar(position: number): Promise<string> {
-        const buffer = Buffer.alloc(this.readConfig.readCharLen);
-        const result = await this.fileHandle!.read(buffer, this.readConfig.offset, this.readConfig.readCharLen, position);
+    private readChar(position: number): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const buffer = Buffer.alloc(this.readConfig.readCharLen);
 
-        return this.isRead(result.bytesRead)
-            ? result.buffer.toString()
-            : this.EMPTY_CHAR;
+            readFile(this.fd!, buffer, this.readConfig.offset, this.readConfig.readCharLen, position,
+                (err: NodeJS.ErrnoException | null, byteRead: number, results: Buffer) => {
+                    if (err) return reject(err);
+
+                    const char = this.isRead(byteRead)
+                        ? results.toString()
+                        : this.EMPTY_CHAR;
+
+                    return resolve(char);
+            });
+        });
     }
 
     private isRead(byteRead: number) {
