@@ -24,3 +24,6 @@ for await (const result of reader.read()) {
 ```
 $ npm test
 ```
+
+## License
+[MIT](./LICENSE)
