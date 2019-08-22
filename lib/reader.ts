@@ -1,110 +1,101 @@
-import * as fs from 'fs';
-
-class OpenFileError extends Error {}
-class CloseFileError extends Error {}
-class ReadFileError extends Error {}
+import { promises as fsPromises } from 'fs';
 
 interface AGenFileReaderConstructor {
     readonly filePath: string;
     readonly delimiter: string;
 }
 
+interface ReadConfig {
+    offset: number;
+    readCharLen: number;
+    position: number;
+}
+
+class Chunk {
+    private tempStorage: Array<string> = [];
+
+    init() {
+        this.tempStorage = [];
+    }
+
+    save(c: string) {
+        this.tempStorage.push(c);
+    }
+
+    flush(): string {
+        return this.tempStorage.join(' ');
+    }
+}
+
 export default class AGenFileReader {
     private readonly filePath: string;
     private readonly delimiter: string;
 
-    private readonly defaultOffset: number = 0;
-    private readonly defaultReadCharLen: number = 1;
-    private readonly emptyChar: string = '';
-    private buffer: Array<string> = [];
-    private position: number = 0;
-    private fd: number | undefined;
+    private readonly readConfig: ReadConfig;
+    private readonly EMPTY_CHAR: string = '';
+    private chunk?: Chunk;
+    private fileHandle?: fsPromises.FileHandle;
 
     constructor(params: AGenFileReaderConstructor) {
         this.filePath = params.filePath;
         this.delimiter = params.delimiter;
+        this.readConfig = {
+            offset: 0, 
+            position: 0,
+            readCharLen: 1,
+        };
     }
 
-    private openFile(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            fs.open(this.filePath, 'r', (err, fd) => {
-                if (err) return reject(new OpenFileError(err.message));
-
-                this.fd = fd;
-                return resolve();
-            });
-        });
+    private async openFile() {
+        this.fileHandle = await fsPromises.open(this.filePath, 'r');
     }
 
-    private closeFile(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            fs.close(this.fd!, (err) => {
-                if (err) return reject(new CloseFileError(err.message));
-
-                return resolve();
-            });
-        });
+    private async closeFile() {
+        if (this.fileHandle) await this.fileHandle.close();
     }
 
-    private readChar(position: number): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const buffer = Buffer.alloc(this.defaultReadCharLen);
+    private async readChar(position: number): Promise<string> {
+        const buffer = Buffer.alloc(this.readConfig.readCharLen);
+        const result = await this.fileHandle!.read(buffer, this.readConfig.offset, this.readConfig.readCharLen, position);
 
-            fs.read(this.fd!, buffer, this.defaultOffset, this.defaultReadCharLen, position, (err, byteRead, results) => {
-                if (err) return reject(new ReadFileError(err.message));
-
-                const char = this.isRead(byteRead)
-                    ? results.toString()
-                    : this.emptyChar;
-                
-                return resolve(char);
-            });
-        });
+        return this.isRead(result.bytesRead)
+            ? result.buffer.toString()
+            : this.EMPTY_CHAR;
     }
 
     private isRead(byteRead: number) {
-        return this.defaultReadCharLen === byteRead;
+        return this.readConfig.readCharLen === byteRead;
     }
 
     private isEmptyChar(c: string) {
-        return this.emptyChar === c;
+        return this.EMPTY_CHAR === c;
     }
 
     private isDelimiter(c: string) {
         return this.delimiter === c;
     }
 
-    private saveBuffer(c: string) {
-        this.buffer.push(c);
-    }
-
-    private flushBuffer(): string {
-        return this.buffer.join('');
-    }
-
-    private initBuffer() {
-        this.buffer = [];
-    }
-
     private nextPosition() {
-        this.position++;
+        this.readConfig.position++;
     }
 
     async *read(): AsyncIterableIterator<string> {
         try {
             await this.openFile();
 
+            this.chunk = new Chunk();
             while (true) {
-                const char = await this.readChar(this.position);
+                const char = await this.readChar(this.readConfig.position);
                 const isEmpty = this.isEmptyChar(char);
                 const isDelimiter = this.isDelimiter(char);
 
                 if (isEmpty || isDelimiter) {
-                    yield this.flushBuffer();
+                    yield this.chunk.flush();
                     if (isEmpty) break;
-                    else this.initBuffer();
+
+                    this.chunk.init();
                 } else {
-                    this.saveBuffer(char);
+                    this.chunk.save(char);
                 }
 
                 this.nextPosition();
