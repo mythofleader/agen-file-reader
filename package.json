@@ -1,0 +1,27 @@
+{
+  "name": "agen-file-reader",
+  "version": "0.0.1",
+  "description": "asynchronous file reader using generator",
+  "main": "lib/reader.ts",
+  "scripts": {
+    "test": "./node_modules/mocha/bin/_mocha -require ./node_modules/ts-node/register 'test/**/*.ts'",
+    "build": "./node_modules/typescript/bin/tsc"
+  },
+  "keywords": [
+    "async",
+    "file",
+    "reader",
+    "generator"
+  ],
+  "author": "jihoon kim",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^12.7.2",
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.7",
+    "chai": "^4.2.0",
+    "mocha": "^6.1.4",
+    "ts-node": "^8.3.0",
+    "typescript": "^3.5.3"
+  }
+}
