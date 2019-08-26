@@ -1,6 +1,8 @@
 # agen-file-reader
 agen-file-reader is a simple asynchronous file reader using generator.
 
+[![Build Status](https://travis-ci.com/mythofleader/agen-file-reader.svg?branch=master)](https://travis-ci.com/mythofleader/agen-file-reader)
+
 ## Installation
 ```
 $ npm install --save agen-file-reader
