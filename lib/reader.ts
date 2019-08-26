@@ -10,45 +10,21 @@ interface AGenFileReaderConstructor {
     readonly delimiter: string;
 }
 
-interface ReadConfig {
-    offset: number;
-    readCharLen: number;
-    position: number;
-}
-
-class Chunk {
-    private tempStorage: Array<string> = [];
-
-    init() {
-        this.tempStorage = [];
-    }
-
-    save(c: string) {
-        this.tempStorage.push(c);
-    }
-
-    flush(): string {
-        return this.tempStorage.join('');
-    }
-}
-
 export default class AGenFileReader {
     private readonly filePath: string;
     private readonly delimiter: string;
+    private readonly delimiterCharCode: number;
 
-    private readonly readConfig: ReadConfig;
-    private readonly EMPTY_CHAR: string = '';
-    private chunk?: Chunk;
+    private readonly EMPTY: string = '';
+    private readonly bufferSize = 1024;
+    private readonly offset = 0;
+    private position = 0;
     private fd?: number;
 
     constructor(params: AGenFileReaderConstructor) {
         this.filePath = params.filePath;
         this.delimiter = params.delimiter;
-        this.readConfig = {
-            offset: 0,
-            position: 0,
-            readCharLen: 1,
-        };
+        this.delimiterCharCode = this.delimiter.charCodeAt(0);
     }
 
     private async openFile(): Promise<void> {
@@ -59,53 +35,48 @@ export default class AGenFileReader {
         if (this.fd) await closeFile(this.fd);
     }
 
-    private async readChar(position: number): Promise<string> {
-        if (!this.fd) return this.EMPTY_CHAR;
+    private async readLine(): Promise<string> {
+        if (!this.fd) return this.EMPTY;
 
-        const buffer = Buffer.alloc(this.readConfig.readCharLen);
-        const result = await readFile(this.fd, buffer, this.readConfig.offset, this.readConfig.readCharLen, position);
+        const buffer = Buffer.alloc(this.bufferSize);
+        const result = await readFile(this.fd, buffer, this.offset, this.bufferSize, this.position);
+        if (result.bytesRead === 0) return this.EMPTY;
 
-        return this.isRead(result.bytesRead)
-            ? result.buffer.toString()
-            : this.EMPTY_CHAR;
+        const startIdx = 0;
+        const endIdx = this.calculateEndIdx(result.buffer, result.bytesRead);
+
+        this.addPosition(endIdx);
+        return result.buffer.slice(startIdx, endIdx).toString();
     }
 
-    private isRead(byteRead: number): boolean {
-        return this.readConfig.readCharLen === byteRead;
+    private calculateEndIdx(buffer: Buffer, bytesRead: number): number {
+        if (bytesRead < this.bufferSize) return bytesRead;
+
+        const lastIdx = buffer.lastIndexOf(this.delimiterCharCode);
+        return lastIdx === -1 ? bytesRead : lastIdx;
     }
 
-    private isEmptyChar(c: string): boolean {
-        return this.EMPTY_CHAR === c;
+    private addPosition(lastReadPosition: number): void {
+        this.position += lastReadPosition;
     }
 
-    private isDelimiter(c: string): boolean {
-        return this.delimiter === c;
-    }
-
-    private nextPosition(): void {
-        this.readConfig.position++;
+    private isEmpty(s: string): boolean {
+        return this.EMPTY === s;
     }
 
     async *read(): AsyncIterableIterator<string> {
         try {
             await this.openFile();
 
-            this.chunk = new Chunk();
             while (true) {
-                const char = await this.readChar(this.readConfig.position);
-                const isEmpty = this.isEmptyChar(char);
-                const isDelimiter = this.isDelimiter(char);
+                const str = await this.readLine();
+                const isEmpty = this.isEmpty(str);
+                if (isEmpty) break;
 
-                if (isEmpty || isDelimiter) {
-                    yield this.chunk.flush();
-                    if (isEmpty) break;
-
-                    this.chunk.init();
-                } else {
-                    this.chunk.save(char);
+                const results = str.split(this.delimiter);
+                for (const result of results) {
+                    yield result;
                 }
-
-                this.nextPosition();
             }
         } catch (e) {
             throw e;
