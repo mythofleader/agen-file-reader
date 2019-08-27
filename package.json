@@ -1,8 +1,9 @@
 {
   "name": "agen-file-reader",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "asynchronous file reader using generator",
-  "main": "lib/reader.ts",
+  "main": "lib/reader.js",
+  "types": "lib/reader.d.ts",
   "scripts": {
     "test": "./node_modules/mocha/bin/_mocha -require ./node_modules/ts-node/register 'test/**/*.ts'",
     "build": "./node_modules/typescript/bin/tsc"
