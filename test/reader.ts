@@ -1,6 +1,6 @@
 import * as path from "path";
 import { expect } from 'chai';
-import AGenFileReader from "../lib/reader";
+import { AGenFileReader } from "../lib/reader";
 
 describe('AGenFileReader', () => {
     it('read .txt file', async () => {
