@@ -4,20 +4,14 @@
 agen-file-reader is a simple asynchronous file reader using generator.
 
 ## Installation
-### Javscript
 ```
 $ npm install --save agen-file-reader
-```
-
-### Typescript
-```
-$ npm install --save @types/agen-file-reader
 ```
 
 ## Usage
 ### Javascript
 ```javascript
-const AGenFileReader = require("agen-file-reader");
+const { AGenFileReader } = require("agen-file-reader");
 
 async function main() {
   const filePath = "path you want to read a file";
@@ -34,7 +28,7 @@ main();
 
 ### Typescript
 ```typescript
-import AGenFileReader from "agen-file-reader"
+import { AGenFileReader } from "agen-file-reader"
 
 async function main() {
   const filePath = "path you want to read a file";
