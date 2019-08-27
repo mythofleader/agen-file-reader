@@ -10,7 +10,7 @@ interface AGenFileReaderConstructor {
     readonly delimiter: string;
 }
 
-export default class AGenFileReader {
+export class AGenFileReader {
     private readonly filePath: string;
     private readonly delimiter: string;
     private readonly delimiterCharCode: number;

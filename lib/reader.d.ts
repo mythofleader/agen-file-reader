@@ -2,7 +2,7 @@ interface AGenFileReaderConstructor {
     readonly filePath: string;
     readonly delimiter: string;
 }
-export default class AGenFileReader {
+export declare class AGenFileReader {
     private readonly filePath;
     private readonly delimiter;
     private readonly delimiterCharCode;
