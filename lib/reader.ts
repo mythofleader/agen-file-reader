@@ -75,6 +75,8 @@ export class AGenFileReader {
 
                 const results = str.split(this.delimiter);
                 for (const result of results) {
+                    if (this.isEmpty(result)) continue;
+
                     yield result;
                 }
             }
